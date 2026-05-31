@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  mariadb:
+    image: mariadb:10.11
+    container_name: postal-mariadb
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: postal_root_pass
+      MYSQL_DATABASE: postal
+      MYSQL_USER: postal
+      MYSQL_PASSWORD: postal_db_pass
+    volumes:
+      - postal-mariadb:/var/lib/mysql
+    networks:
+      - postal-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: postal-redis
+    restart: always
+    networks:
+      - postal-net
+
+  postal-web:
+    image: ghcr.io/postalserver/postal:3.3.5
+    container_name: postal-web
+    command: postal web-server
+    restart: always
+    depends_on:
+      - mariadb
+      - redis
+    volumes:
+      - /opt/postal/config:/config
+    ports:
+      - "127.0.0.1:5000:5000"
+    environment:
+      - POSTAL_WEB_BIND=0.0.0.0
+      - PORT=5000
+    networks:
+      - postal-net
+
+  postal-worker:
+    image: ghcr.io/postalserver/postal:3.3.5
+    container_name: postal-worker
+    command: postal worker
+    restart: always
+    depends_on:
+      - postal-web
+    volumes:
+      - /opt/postal/config:/config
+    environment:
+      - POSTAL_SMTP_RELAYS=${POSTAL_SMTP_RELAYS}
+    networks:
+      - postal-net
+
+  postal-smtp:
+    image: ghcr.io/postalserver/postal:3.3.5
+    container_name: postal-smtp
+    command: postal smtp-server
+    restart: always
+    depends_on:
+      - postal-web
+    volumes:
+      - /opt/postal/config:/config
+    environment:
+      - POSTAL_SMTP_RELAYS=${POSTAL_SMTP_RELAYS}
+    ports:
+      - "25:25"
+    networks:
+      - postal-net
+
+volumes:
+  postal-mariadb:
+
+networks:
+  postal-net:
+    driver: bridge

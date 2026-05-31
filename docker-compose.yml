@@ -1,5 +1,4 @@
 services:
-
   postgres:
     image: postgis/postgis:16-3.4-alpine
     container_name: explora-postgres
@@ -14,6 +13,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - default
 
   backend:
     build: ./backend
@@ -36,6 +37,9 @@ services:
       APP_BASE_URL: ${APP_BASE_URL}
     ports:
       - "8080:8080"
+    networks:
+      - default
+      - postal_postal-net
 
   frontend:
     build: ./frontend
@@ -48,6 +52,15 @@ services:
     volumes:
       - /opt/certbot/webroot:/var/www/certbot
       - /etc/letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - default
+      - postal_postal-net
 
 volumes:
   postgres_data:
+
+networks:
+  default:
+    driver: bridge
+  postal_postal-net:
+    external: true
